@@ -1,0 +1,144 @@
+protected void Page_Load(object sender, EventArgs e)
+        {
+            if (!IsPostBack)
+            {
+                var result1 = Calculate("1 + 1");//2
+                var result2 = Calculate("2 * 2");//4
+                var result3 = Calculate("1 + 2 + 3");//6
+                var result4 = Calculate("6 / 2");//3
+                var result5 = Calculate("11 + 23");//34
+                var result6 = Calculate("11.1 + 23");//34.1
+                var result7 = Calculate("1 + 1 * 3");//4
+                var result8 = Calculate("( 11.5 + 15.4 ) + 10.1");//37
+                var result9 = Calculate("23 - ( 29.3 - 12.5 )");//6.2
+                var result10 = Calculate("( 1 / 2 ) - 1 + 1");//0.5
+                var result11 = Calculate("10 - ( 2 + 3 * ( 7 - 5 ) )");//2;
+            }
+        }
+
+        public double Calculate(string sum)
+        {
+            var result = string.Empty;
+            result = Recalculate(sum);
+
+            var isDouble = double.TryParse(result, out double actualResult);
+            return actualResult;
+        }
+
+        public string Recalculate(string content)
+        {
+            var result = string.Empty;
+            var list = content.Split(' ');
+            var openBracketNum = -1;
+            var closeBracketNum = -1;
+
+            if (list.Count() == 1)
+            {
+                result = list[0];
+            }
+            else if (list.Count() >= 3)
+            {
+                for (int num = 0; num < list.Count(); num++)
+                {
+                    if (content.Contains("(") && content.Contains(")"))
+                    {
+                        if (openBracketNum != -1 && closeBracketNum != -1 && num > openBracketNum && num < closeBracketNum)
+                        {
+                            var value1Num = num - 1;
+                            var value2Num = num + 1;
+                            var operatorNum = num;
+                            var skipForAddSubtract = false;
+                            var operatorCount = 0;
+                            for (int num2 = openBracketNum; num2 < closeBracketNum; num2++)
+                            {
+                                if (list[num2].Contains("*") || list[num2].Contains("/"))
+                                    skipForAddSubtract = true;
+
+                                if (list[num2].Contains("+") || list[num2].Contains("-") || list[num2].Contains("*") || list[num2].Contains("/"))
+                                    operatorCount++;
+                            }
+                            if (ContinueAfterCalculate(list, value1Num, value2Num, operatorNum, skipForAddSubtract))
+                                continue;
+                            list[openBracketNum] = operatorCount > 1 ? list[openBracketNum] : "";
+                            list[operatorNum] = "";
+                            list[value2Num] = "";
+                            list[closeBracketNum] = operatorCount > 1 ? list[closeBracketNum] : "";
+                            result = Recalculate(GetStringFromList(list));
+                        }
+                        else if (list[num] == "(")
+                        {
+                            openBracketNum = num;
+                            continue;
+                        }
+                        else if (list[num] == ")" && closeBracketNum == -1)
+                        {
+                            closeBracketNum = num;
+                            num = openBracketNum;
+                            continue;
+                        }
+                        else
+                        {
+                            continue;
+                        }
+                    }
+                    else
+                    {
+                        var value1Num = num - 1;
+                        var value2Num = num + 1;
+                        var operatorNum = num;
+                        var skipForAddSubtract = content.Contains("*") || content.Contains("/") ? true : false;
+                        if (ContinueAfterCalculate(list, value1Num, value2Num, operatorNum, skipForAddSubtract))
+                            continue;
+                        list[operatorNum] = "";
+                        list[value2Num] = "";
+                        result = Recalculate(GetStringFromList(list));
+                    }
+
+                    var isDouble = double.TryParse(result, out double actualResult);
+                    if (isDouble)
+                        break;
+                }
+            }
+
+            return result;
+        }
+
+        public bool ContinueAfterCalculate(string[] list, int value1Num, int value2Num, int operatorNum, bool skipForAddSubtract)
+        {
+            if (list[operatorNum] == "*")
+            {
+                list[value1Num] = (double.Parse(list[value1Num]) * double.Parse(list[value2Num])).ToString("0.00");
+            }
+            else if (list[operatorNum] == "/")
+            {
+                list[value1Num] = (double.Parse(list[value1Num]) / double.Parse(list[value2Num])).ToString("0.00");
+            }
+            else if (list[operatorNum] == "+" && !skipForAddSubtract)
+            {
+                list[value1Num] = (double.Parse(list[value1Num]) + double.Parse(list[value2Num])).ToString("0.00");
+            }
+            else if (list[operatorNum] == "-" && !skipForAddSubtract)
+            {
+                list[value1Num] = (double.Parse(list[value1Num]) - double.Parse(list[value2Num])).ToString("0.00");
+            }
+            else //skip for numbering
+            {
+                return true;
+            }
+
+            return false;
+        }
+
+        public string GetStringFromList(string[] contents)
+        {
+            var result = string.Empty;
+            foreach (var content in contents)
+            {
+                if (content != string.Empty)
+                {
+                    result += content + " ";
+                }
+            }
+            result = result[result.Length - 1] == ' ' ? result.Remove(result.Length - 1, 1) : result;
+            return result;
+        }
